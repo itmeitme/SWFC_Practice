@@ -1,5 +1,4 @@
-//wrong answer
-#pragma warning (disable:4996)
+//ACCEPT
 
 #include <stdio.h>
 #define MAX (int)(1e9)
@@ -11,15 +10,79 @@ typedef struct st {
 }FOOD;
 
 FOOD fd[262145];
-int N, result = MAX, maxhot[2], food[100000][2]; //0은 포만감, 1은 매운정도
+int N, result = MAX, food[100001][2], heap[100000][2], left, right; //0은 포만감, 1은 매운정도
+int heapSize = 0;
 long long int M;
+
+int heapPush(int node, int hot)
+{
+	if (heapSize + 1 > MAX)
+		return 0;
+
+	heap[heapSize][0] = node, heap[heapSize][1] = hot;
+
+	int current = heapSize;
+	while (current > 0 && heap[current][1] < heap[(current - 1) / 2][1])
+	{
+		int temp[2];
+		temp[0] = heap[(current - 1) / 2][0], temp[1] = heap[(current - 1) / 2][1];
+		heap[(current - 1) / 2][0] = heap[current][0], heap[(current - 1) / 2][1] = heap[current][1];
+		heap[current][0] = temp[0], heap[current][1] = temp[1];
+		current = (current - 1) / 2;
+	}
+
+	heapSize = heapSize + 1;
+
+	return 1;
+}
+
+int heapPop(int *node, int *hot)
+{
+	if (heapSize <= 0)
+	{
+		return -1;
+	}
+
+	*node = heap[0][0], *hot = heap[0][1];
+	heapSize = heapSize - 1;
+
+	heap[0][0] = heap[heapSize][0], heap[0][1] = heap[heapSize][1];
+	heap[heapSize][0] = heap[heapSize][1] = 0;
+
+	int current = 0;
+	while (current * 2 + 1 < heapSize)
+	{
+		int child;
+		if (current * 2 + 2 == heapSize)
+		{
+			child = current * 2 + 1;
+		}
+		else
+		{
+			child = heap[current * 2 + 1][1] < heap[current * 2 + 2][1] ? current * 2 + 1 : current * 2 + 2;
+		}
+
+		if (heap[current][1] < heap[child][1])
+		{
+			break;
+		}
+
+		int temp[2];
+		temp[0] = heap[current][0], temp[1] = heap[current][1];
+		heap[current][0] = heap[child][0], heap[current][1] = heap[child][1];
+		heap[child][0] = temp[0], heap[child][1] = temp[1];
+
+		current = child;
+	}
+	return 1;
+}
 
 void inputData(void)
 {
 	scanf("%d %lld", &N, &M);
-	for (int i = 0; i < N; i++) {
+	for (int i = 1; i <= N; i++) {
 		scanf("%d %d", &food[i][0], &food[i][1]);
-		if (food[i][1] > maxhot[1]) maxhot[1] = food[i][1], maxhot[0] = i;
+		if (heapPush(i, food[i][1])) continue;
 	}
 }
 
@@ -45,9 +108,9 @@ FOOD queryData(int node, int s, int e, int qs, int qe)
 {
 	int m;
 	FOOD l, r;
-	
+
 	if (qs <= s && e <= qe) return fd[node];
-	if (qs > e || s > qe) return { 0,0,0 };
+	if (qs > e || s > qe) return{ 0, 0, 0 };
 
 	m = (s + e) / 2;
 
@@ -73,23 +136,30 @@ long long int sumData(int node, int s, int e, int qs, int qe)
 	return l + r;
 }
 
+void findBigger(int i)
+{
+	int cnt = 1;
+
+	while (i - cnt >= 1 && food[i - cnt][1] <= food[i][1]) cnt++;
+	left = i - cnt + 1;
+	cnt = 1;
+	while (i + cnt <= N && food[i + cnt][1] <= food[i][1]) cnt++;
+	right = i + cnt - 1;
+}
+
 int main(void)
 {
 	inputData();
-	for (int i = 0; i < N; i++)
-		initSegment(1, 1, N, i + 1, food[i]);
+	for (int i = 1; i <= N; i++)
+		initSegment(1, 1, N, i, food[i]);
 	for (int i = 1; i <= N; i++) {
-		FOOD L, R;
-		int left, right;
-		if (maxhot[0] == i - 1) {
-			if (fd[1].poman >= M && maxhot[1] < result) result = maxhot[1];
+		int node, hot;
+		if (heapPop(&node, &hot)) findBigger(node);
+		if (left == right && food[node][0] >= M && hot < result) {
+			result = hot; break;
 		}
-		else {
-			L = queryData(1, 1, N, 1, i), R = queryData(1, 1, N, i, N);
-			left = (food[i - 1][1] < L.hot) ? L.node + 1 : L.node;
-			right = (food[i - 1][1] < R.hot) ? R.node - 1 : R.node;
-			if (left == right && food[i - 1][0] >= M && food[i - 1][1] < result) result = food[i - 1][1];
-			else if (sumData(1, 1, N, left, right) >= M && food[i - 1][1] < result) result = food[i - 1][1];
+		else if (sumData(1, 1, N, left, right) >= M && hot < result) {
+			result = hot; break;
 		}
 	}
 	printf("%d\n", result);
