@@ -1,4 +1,4 @@
-//
+//TLE(33%)
 
 #include <iostream>
 #include <stdio.h>
